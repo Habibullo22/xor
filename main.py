@@ -1,177 +1,135 @@
 from keep_alive import keep_alive
 keep_alive()
 
-from aiogram import Bot, Dispatcher, executor, types
-from aiogram.types import (
-    ReplyKeyboardMarkup, KeyboardButton,
-    InlineKeyboardMarkup, InlineKeyboardButton
-)
+import telebot
+from telebot import types
 
 API_TOKEN = "6940986191:AAGZGcitp0REh85bT6n5CY79K3S5elh41JI"
 ADMIN_ID = 5815294733
 CARD_NUMBER = "9860 6067 5024 7151"
 
-bot = Bot(token=API_TOKEN, parse_mode="HTML")
-dp = Dispatcher(bot)
+bot = telebot.TeleBot(API_TOKEN)
 
 users = {}
 pending = {}
 
 # ================= KEYBOARDS =================
+def main_keyboard():
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("💳 Hisob to‘ldirish", "💸 Mablag‘ chiqarish")
+    kb.add("📊 Balans")
+    return kb
 
-main_kb = ReplyKeyboardMarkup(resize_keyboard=True)
-main_kb.add("💳 Hisob to‘ldirish", "💸 Mablag‘ chiqarish")
-main_kb.add("📊 Balans")
+def paid_keyboard():
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("✅ To‘lov qildim")
+    kb.add("⬅️ Ortga")
+    return kb
 
-paid_kb = ReplyKeyboardMarkup(resize_keyboard=True)
-paid_kb.add("✅ To‘lov qildim")
-paid_kb.add("⬅️ Ortga")
-
-def admin_kb(user_id):
-    kb = InlineKeyboardMarkup()
+def admin_inline(user_id):
+    kb = types.InlineKeyboardMarkup()
     kb.add(
-        InlineKeyboardButton("✅ Tasdiqlash", callback_data=f"confirm:{user_id}"),
-        InlineKeyboardButton("❌ Rad etish", callback_data=f"reject:{user_id}")
+        types.InlineKeyboardButton("✅ Tasdiqlash", callback_data=f"confirm:{user_id}"),
+        types.InlineKeyboardButton("❌ Rad etish", callback_data=f"reject:{user_id}")
     )
     return kb
 
 # ================= START =================
-
-@dp.message_handler(commands=["start"])
-async def start(msg: types.Message):
-    users[msg.from_user.id] = {
-        "balance": 0,
-        "step": None
-    }
-    await msg.answer(
-        "🎉 <b>Xush kelibsiz!</b>\n"
-        "Siz <b>BIG WIN</b> botidasiz 🎰",
-        reply_markup=main_kb
-    )
+@bot.message_handler(commands=["start"])
+def start(msg):
+    users[msg.from_user.id] = {"balance": 0, "step": None}
+    bot.send_message(msg.chat.id,
+                     "🎉 Xush kelibsiz!\nSiz BIG WIN botidasiz 🎰",
+                     reply_markup=main_keyboard())
 
 # ================= HISOB TOLDIRISH =================
-
-@dp.message_handler(text="💳 Hisob to‘ldirish")
-async def deposit(msg: types.Message):
+@bot.message_handler(func=lambda m: m.text=="💳 Hisob to‘ldirish")
+def deposit(msg):
     users[msg.from_user.id]["step"] = "amount"
-    await msg.answer("💰 Qancha pul kiritmoqchisiz?")
+    bot.send_message(msg.chat.id, "💰 Qancha pul kiritmoqchisiz?")
 
-@dp.message_handler(lambda m: users.get(m.from_user.id, {}).get("step") == "amount")
-async def get_amount(msg: types.Message):
+@bot.message_handler(func=lambda m: users.get(m.from_user.id, {}).get("step")=="amount")
+def get_amount(msg):
     if not msg.text.isdigit():
-        await msg.answer("❌ Faqat raqam kiriting")
+        bot.send_message(msg.chat.id, "❌ Faqat raqam kiriting")
         return
-
     users[msg.from_user.id]["amount"] = int(msg.text)
     users[msg.from_user.id]["step"] = "username"
-    await msg.answer("🆔 O‘yin ichidagi ID yoki ismingizni yozing")
+    bot.send_message(msg.chat.id, "🆔 O‘yin ichidagi ID yoki ismingizni yozing")
 
-@dp.message_handler(lambda m: users.get(m.from_user.id, {}).get("step") == "username")
-async def get_username(msg: types.Message):
+@bot.message_handler(func=lambda m: users.get(m.from_user.id, {}).get("step")=="username")
+def get_username(msg):
     users[msg.from_user.id]["username"] = msg.text
     users[msg.from_user.id]["step"] = "waiting_payment"
-
-    await msg.answer(
-        f"✅ <b>Qabul qilindi</b>\n\n"
-        f"💳 <b>Karta:</b>\n"
-        f"<code>{CARD_NUMBER}</code>\n"
-        f"👤 BIG WIN\n\n"
-        f"Pulni o‘tkazib bo‘lgach tugmani bosing 👇",
-        reply_markup=paid_kb
-    )
+    bot.send_message(msg.chat.id,
+                     f"✅ Qabul qilindi\n\n💳 KARTA:\n{CARD_NUMBER}\n👤 BIG WIN\n\nPulni o‘tkazib bo‘lgach tugmani bosing 👇",
+                     reply_markup=paid_keyboard())
 
 # ================= TO‘LOV QILDIM =================
-
-@dp.message_handler(text="✅ To‘lov qildim")
-async def paid(msg: types.Message):
+@bot.message_handler(func=lambda m: m.text=="✅ To‘lov qildim")
+def paid(msg):
     users[msg.from_user.id]["step"] = "send_check"
-    await msg.answer("📸 Iltimos, <b>CHEK RASMINI</b> yuboring")
+    bot.send_message(msg.chat.id, "📸 Iltimos, CHEK RASMINI yuboring")
 
 # ================= CHEK QABUL =================
-
-@dp.message_handler(content_types=types.ContentType.PHOTO)
-async def get_check(msg: types.Message):
+@bot.message_handler(content_types=['photo'])
+def get_check(msg):
     if users.get(msg.from_user.id, {}).get("step") != "send_check":
         return
-
     pending[msg.from_user.id] = users[msg.from_user.id]
-
-    await bot.send_photo(
+    bot.send_photo(
         ADMIN_ID,
         msg.photo[-1].file_id,
-        caption=(
-            "💰 <b>YANGI TO‘LOV</b>\n\n"
-            f"👤 User: @{msg.from_user.username}\n"
-            f"🆔 ID: <code>{msg.from_user.id}</code>\n"
-            f"💵 Summa: <b>{users[msg.from_user.id]['amount']} so‘m</b>\n"
-            f"🎮 Ism: {users[msg.from_user.id]['username']}"
-        ),
-        reply_markup=admin_kb(msg.from_user.id)
+        caption=f"💰 YANGI TO‘LOV\n\n👤 User: @{msg.from_user.username}\n🆔 ID: {msg.from_user.id}\n💵 Summa: {users[msg.from_user.id]['amount']} so‘m\n🎮 Ism: {users[msg.from_user.id]['username']}",
+        reply_markup=admin_inline(msg.from_user.id)
     )
+    bot.send_message(msg.chat.id, "⏳ To‘lov tekshirilmoqda...")
 
-    await msg.answer("⏳ To‘lov tekshirilmoqda...")
-
-# ================= ADMIN TASDIQ =================
-
-@dp.callback_query_handler(lambda c: c.data.startswith(("confirm", "reject")))
-async def admin_action(call: types.CallbackQuery):
+# ================= ADMIN TASDIQLASH =================
+@bot.callback_query_handler(func=lambda call: call.data.startswith(("confirm","reject")))
+def admin_action(call):
     if call.from_user.id != ADMIN_ID:
-        await call.answer("Ruxsat yo‘q", show_alert=True)
         return
-
     action, user_id = call.data.split(":")
     user_id = int(user_id)
-
     if user_id not in pending:
-        await call.answer("Topilmadi", show_alert=True)
+        call.answer("Topilmadi", show_alert=True)
         return
-
-    if action == "confirm":
+    if action=="confirm":
         users[user_id]["balance"] += pending[user_id]["amount"]
-        await bot.send_message(user_id, "✅ Hisobingizga pul tushdi")
+        bot.send_message(user_id, "✅ Hisobingizga pul tushdi")
     else:
-        await bot.send_message(user_id, "❌ To‘lov rad etildi")
-
+        bot.send_message(user_id, "❌ To‘lov rad etildi")
     pending.pop(user_id)
-    await call.answer("Bajarildi")
+    call.answer("Bajarildi")
 
 # ================= BALANS =================
-
-@dp.message_handler(text="📊 Balans")
-async def balance(msg: types.Message):
-    await msg.answer(f"💰 Balansingiz: <b>{users[msg.from_user.id]['balance']} so‘m</b>")
+@bot.message_handler(func=lambda m: m.text=="📊 Balans")
+def balance(msg):
+    bot.send_message(msg.chat.id, f"💰 Balansingiz: {users[msg.from_user.id]['balance']} so‘m")
 
 # ================= MABLAG CHIQARISH =================
+@bot.message_handler(func=lambda m: m.text=="💸 Mablag‘ chiqarish")
+def withdraw(msg):
+    bot.send_message(msg.chat.id, "💸 Qancha pul yechmoqchisiz?")
 
-@dp.message_handler(text="💸 Mablag‘ chiqarish")
-async def withdraw(msg: types.Message):
-    await msg.answer("💸 Qancha pul yechmoqchisiz?")
-
-@dp.message_handler(lambda m: m.text.isdigit())
-async def deny_withdraw(msg: types.Message):
-    await msg.answer("❌ Balansingizda yetarli mablag‘ yo‘q")
+@bot.message_handler(func=lambda m: m.text.isdigit())
+def deny_withdraw(msg):
+    bot.send_message(msg.chat.id, "❌ Balansingizda yetarli mablag‘ yo‘q")
 
 # ================= ORTGA =================
-
-@dp.message_handler(text="⬅️ Ortga")
-async def back(msg: types.Message):
+@bot.message_handler(func=lambda m: m.text=="⬅️ Ortga")
+def back(msg):
     users[msg.from_user.id]["step"] = None
-    await msg.answer("🏠 Asosiy menyu", reply_markup=main_kb)
+    bot.send_message(msg.chat.id, "🏠 Asosiy menyu", reply_markup=main_keyboard())
 
 # ================= ADMIN PANEL =================
-
-@dp.message_handler(commands=["admin"])
-async def admin_panel(msg: types.Message):
+@bot.message_handler(commands=["admin"])
+def admin_panel(msg):
     if msg.from_user.id != ADMIN_ID:
         return
-    await msg.answer(
-        "🛠 <b>ADMIN PANEL</b>\n\n"
-        "📢 Reklama\n"
-        "💰 To‘lovlar\n"
-        "👥 Foydalanuvchilar"
-    )
+    bot.send_message(msg.chat.id, "🛠 ADMIN PANEL\n\n📢 Reklama\n💰 To‘lovlar\n👥 Foydalanuvchilar")
 
 # ================= RUN =================
-
-if __name__ == "__main__":
-    executor.start_polling(dp, skip_updates=True)
+print("Bot ishga tushdi...")
+bot.infinity_polling()
