@@ -53,7 +53,7 @@ def init_mines(message):
         bombs = random.sample(range(25), 3)
         user_games[user_id] = {
             'stake': stake,
-            'bombs': 💣,
+            'bombs': boom,
             'opened': [✅],
             'multiplier': 1.0
         }
