@@ -54,7 +54,7 @@ def init_mines(message):
         user_games[user_id] = {
             'stake': stake,
             'bombs': boom,
-            'opened': [✅],
+            'opened': [],
             'multiplier': 1.0
         }
         send_mines_board(message.chat.id, user_id, bomb_triggered=False)
