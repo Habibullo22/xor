@@ -5,7 +5,7 @@ import random
 import threading
 import time
 
-TOKEN = "8161107014:AAH1I0srDbneOppDw4AsE2kEYtNtk7CRjOw"
+TOKEN = "8161107014:AAGBWEYVxie7-pB4-2FoGCPjCv_sl0yHogc"
 bot = telebot.TeleBot(TOKEN)
 
 user_balances = {}
@@ -53,8 +53,8 @@ def init_mines(message):
         bombs = random.sample(range(25), 3)
         user_games[user_id] = {
             'stake': stake,
-            'bombs': bombs,
-            'opened': [],
+            'bombs': [💣],
+            'opened': [✅],
             'multiplier': 1.0
         }
         send_mines_board(message.chat.id, user_id, bomb_triggered=False)
