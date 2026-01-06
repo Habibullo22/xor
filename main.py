@@ -4,7 +4,7 @@ keep_alive()
 import telebot
 from telebot import types
 
-API_TOKEN = "8161107014:AAGBWEYVxie7-pB4-2FoGCPjCv_sl0yHogc"
+API_TOKEN = "6940986191:AAGZGcitp0REh85bT6n5CY79K3S5elh41JI"
 ADMIN_ID = 5815294733
 CARD_NUMBER = "9860 6067 5024 7151"
 
